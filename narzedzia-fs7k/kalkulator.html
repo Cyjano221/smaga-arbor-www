@@ -109,6 +109,43 @@
   .verdict.high{background:#fbe9e7;color:var(--red)}
 
   .note{font-size:.78rem;color:var(--muted);margin-top:18px;text-align:center;line-height:1.5}
+  .copybtn--alt{background:#fff;color:var(--green-700);border:1.5px solid var(--green-500);margin-top:8px}
+  .copybtn--alt:hover{background:var(--green-50)}
+
+  /* ══════ OFERTA — ukryta na ekranie, widoczna tylko na wydruku ══════ */
+  .oferta{display:none}
+  @page{size:A4 portrait;margin:0}
+  @media print{
+    body>.wrap{display:none!important}
+    body{background:#fff;padding:0}
+    .oferta{display:block;width:210mm;min-height:297mm;padding:16mm 18mm;
+      font-family:var(--font);color:#16201a;font-size:10.5pt;line-height:1.5}
+    .of__head{display:flex;justify-content:space-between;align-items:flex-start;
+      border-bottom:2.5px solid var(--green-700);padding-bottom:4mm;margin-bottom:7mm}
+    .of__brand{font-size:17pt;font-weight:800;color:var(--green-700);line-height:1.1}
+    .of__brand small{display:block;font-size:7.5pt;font-weight:400;color:#7a8880;letter-spacing:.05em;margin-top:1mm}
+    .of__kontakt{text-align:right;font-size:9pt;color:#5a665e;line-height:1.55}
+    .of__title{font-size:14pt;text-align:center;letter-spacing:.04em;margin-bottom:3mm}
+    .of__meta{display:flex;justify-content:space-between;font-size:9pt;color:#5a665e;
+      border-bottom:1px solid #dde5e0;padding-bottom:2.5mm;margin-bottom:6mm}
+    .of__h3{font-size:9.5pt;text-transform:uppercase;letter-spacing:.07em;color:var(--green-700);
+      margin:0 0 2.5mm;padding-bottom:1mm;border-bottom:1px solid #dde5e0}
+    .of__zakres{list-style:none;margin:0 0 6mm;padding:0}
+    .of__zakres li{padding:1.6mm 0 1.6mm 7mm;position:relative;font-size:10.5pt}
+    .of__zakres li:before{content:"✓";position:absolute;left:0;color:var(--green-600);font-weight:800}
+    .of__tab{width:100%;border-collapse:collapse;margin-bottom:7mm;font-size:10pt}
+    .of__tab td{padding:1.8mm 0;border-bottom:1px dotted #ccd6cf}
+    .of__tab td:last-child{text-align:right;font-weight:600}
+    .of__cena{display:flex;justify-content:space-between;align-items:center;
+      background:var(--green-50);border-left:4px solid var(--green-600);
+      padding:5mm 6mm;margin-bottom:7mm;font-size:12pt}
+    .of__cena b{font-size:19pt;font-weight:800;color:var(--green-700)}
+    .of__uwagi{font-size:8.7pt;color:#3d4a43;line-height:1.55}
+    .of__uwagi p{margin-bottom:2.2mm}
+    .of__pyt{margin-top:5mm;font-size:10pt;color:var(--green-700)}
+    .of__stopka{margin-top:8mm;padding-top:2.5mm;border-top:1px solid #dde5e0;
+      font-size:7.5pt;color:#7a8880;text-align:center}
+  }
   .copybtn{margin-top:16px;width:100%;background:var(--green-600);color:#fff;border:0;padding:12px;border-radius:999px;
     font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer}
   .copybtn:hover{background:var(--green-700)}
@@ -270,7 +307,8 @@
         <div class="drewno-info" id="drewnoInfo" hidden></div>
       </div>
 
-      <button class="copybtn" id="copy">📋 Skopiuj ofertę dla klienta</button>
+      <button class="copybtn" id="copy">📋 Skopiuj ofertę jako tekst</button>
+      <button class="copybtn copybtn--alt" id="ofertaBtn">📄 Wygeneruj ofertę do druku / PDF</button>
       <div class="copied" id="copied"></div>
     </div>
   </div>
@@ -282,6 +320,45 @@
     Widełki rynkowe celują w <b>dolno-środkową półkę</b>, bo na wsi jest taniej niż w miastach.
     Po pierwszych zleceniach podaj mi realne ceny — dostroję stawki pod Ciebie.
   </div>
+</div>
+
+<!-- ════════ OFERTA DLA KLIENTA — widoczna tylko na wydruku ════════ -->
+<div class="oferta" id="oferta" aria-hidden="true">
+  <div class="of__head">
+    <div class="of__brand">Smaga Arbor<small>WYCINKA I PIELĘGNACJA DRZEW</small></div>
+    <div class="of__kontakt">
+      tel. 882 495 959<br />smagaarbor@gmail.com<br />
+      Limanowa · Tymbark · Nowy Sącz
+    </div>
+  </div>
+
+  <h2 class="of__title">OFERTA CENOWA</h2>
+  <div class="of__meta">
+    <span>Data: <b id="ofData"></b></span>
+    <span>Oferta ważna 14 dni</span>
+  </div>
+
+  <h3 class="of__h3">Zakres prac</h3>
+  <ul class="of__zakres" id="ofZakres"></ul>
+
+  <h3 class="of__h3">Szczegóły zlecenia</h3>
+  <table class="of__tab" id="ofSzczegoly"></table>
+
+  <div class="of__cena">
+    <span>Cena za całość:</span>
+    <b id="ofCena"></b>
+  </div>
+
+  <div class="of__uwagi">
+    <p><b>Co obejmuje cena:</b> wyłącznie prace wymienione powyżej. Dojazd i sprzęt w cenie.</p>
+    <p><b>Wycena orientacyjna</b> — cena ostateczna po bezpłatnych oględzinach na miejscu.
+       Jeśli warunki okażą się inne, niż opisane, uzgodnimy cenę przed rozpoczęciem pracy.</p>
+    <p><b>Bezpieczeństwo:</b> pracujemy w sprzęcie ochronnym, po ukończonym państwowym
+       kursie pilarza. Teren po pracy zostawiamy zgodnie z uzgodnionym zakresem.</p>
+    <p class="of__pyt">Pytania? Dzwoń: <b>882 495 959</b> — chętnie wyjaśnię.</p>
+  </div>
+
+  <div class="of__stopka">Smaga Arbor · Florian Smaga · tel. 882 495 959 · smagaarbor@gmail.com</div>
 </div>
 
 <script>
@@ -738,6 +815,11 @@
     $("klientHint").textContent = KLIENT_OPIS[typKl] || "";
     $("lasHint").textContent = "Stawka Taty to 30–40 zł/m³ za samo obalenie. Celujemy w "+
       LAS_ZL_M3.min+"–"+LAS_ZL_M3.max+" zł/m³, bo na forum leśnym 35 zł/m³ uznano za niewystarczające na pokrycie kosztów.";
+
+    // Dane dla oferty i kopiowania (tryb leśny)
+    last = { metoda:metoda, wys:wys, n:n, totLo:totLo, totHi:totHi, reco:reco,
+             on:{ pociecie:false, galezie:false, drewno:false, uprzat:false, frez:false, opal:false },
+             wariant:"LAS", las:true, m3:m3, zrywka:zrywka };
   }
 
   function labelMetoda(m){return m==="ziemia"?"z ziemi":m==="linowa"?"linowa":"zwyżka";}
@@ -762,6 +844,60 @@
       $("copied").textContent="Skopiowano — wklej klientowi.";
       setTimeout(function(){$("copied").textContent="";},2500);
     },function(){ $("copied").textContent="Nie udało się skopiować."; });
+  });
+
+  /* ═══════ Oferta do druku / PDF ═══════ */
+  $("ofertaBtn").addEventListener("click", function(){
+    if(!last.on){ return; }
+    var las = $("tryb").value === "las";
+
+    // Data
+    $("ofData").textContent = new Date().toLocaleDateString("pl-PL");
+
+    // Zakres prac — punkty
+    /* Bezpieczne wstawianie tekstu — zamieniamy na encje, NIE wycinamy znaków
+       (wcześniejsze wycinanie zjadało ">" w "> 20 m"). */
+    function esc(t){
+      return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    var zakres = ["Ścięcie drzewa" + (last.n>1 ? " ("+last.n+" szt.)" : "")];
+    if(las){
+      if($("zrywka").checked){
+        zakres.push("Zrywka drewna do drogi");
+        zakres.push("Gałęzie pozostają na miejscu (o ile nie ustalono inaczej)");
+      } else {
+        zakres.push("Drewno i gałęzie pozostają na miejscu (o ile nie ustalono inaczej)");
+      }
+    } else {
+      if(last.on.pociecie) zakres.push("Pocięcie drewna na kawałki");
+      if(last.on.galezie)  zakres.push("Wywóz i utylizacja gałęzi");
+      if(last.on.drewno)   zakres.push("Wywóz drewna");
+      if(last.on.uprzat)   zakres.push("Uprzątnięcie terenu po pracach");
+      if(last.on.frez)     zakres.push("Frezowanie pnia poniżej poziomu gruntu");
+      if(last.on.opal)     zakres.push("Drewno zabiera wykonawca (cena już uwzględnia upust)");
+      if(!last.on.galezie && !last.on.drewno && !last.on.uprzat)
+        zakres.push("Uprzątnięcie i wywóz — po stronie Zamawiającego");
+    }
+    $("ofZakres").innerHTML = zakres.map(function(z){
+      return "<li>"+esc(z)+"</li>"; }).join("");
+
+    // Szczegóły
+    var szcz = [];
+    szcz.push(["Liczba drzew", last.n+" szt."]);
+    szcz.push(["Obwód pnia (orientacyjnie)", $("obwod").value+" cm"]);
+    szcz.push(["Wysokość", labelWys(last.wys)]);
+    szcz.push(["Metoda pracy", labelMetoda(last.metoda)]);
+    if(las) szcz.push(["Objętość drewna", $("kubiki").value+" m³"]);
+    if($("budynek").value!=="0") szcz.push(["Otoczenie", $("budynek").value==="2" ? "praca bezpośrednio nad budynkiem" : "praca w pobliżu zabudowy"]);
+    if($("linia").checked) szcz.push(["Uwaga", "drzewo przy linii energetycznej"]);
+    if($("dojazd").value!=="0") szcz.push(["Dostęp", $("dojazd").value==="2" ? "brak dojazdu / teren stromy" : "dojazd utrudniony"]);
+    $("ofSzczegoly").innerHTML = szcz.map(function(s){
+      return "<tr><td>"+esc(s[0])+"</td><td>"+esc(s[1])+"</td></tr>"; }).join("");
+
+    $("ofCena").textContent = fmt(last.reco)+" zł";
+
+    window.print();
   });
 
   // ===== Rozpoznawanie opisu słowami =====
