@@ -13,7 +13,7 @@
 
   /* Maksymalne długości pól — cokolwiek dłuższego jest przycinane */
   var LIMITY = {
-    imie: 80, telefon: 24, lokalizacja: 80, liczba: 10,
+    imie: 80, telefon: 24, email: 120, lokalizacja: 80, liczba: 10,
     wysokosc: 20, dostep: 60, termin: 10, opis: 2000
   };
 
@@ -87,6 +87,13 @@
         return;
       }
 
+      /* E-mail jest opcjonalny, ale jeśli podany — musi wyglądać sensownie */
+      var email = pole("email");
+      if (email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) {
+        setStatus("Adres e-mail wygląda na niepoprawny. Popraw go albo zostaw pole puste.", "is-err");
+        return;
+      }
+
       var action = form.getAttribute("action") || "";
       var podlaczony = action && action.indexOf("TWOJ_ID") === -1 && /^https:\/\//i.test(action);
 
@@ -96,6 +103,7 @@
         var tresc =
           "Imię: " + imie +
           "\nTelefon: " + telefon +
+          (email ? "\nE-mail: " + email : "") +
           "\nLokalizacja: " + pole("lokalizacja") +
           "\nLiczba drzew: " + pole("liczba") +
           "\nWysokość: " + pole("wysokosc") +
@@ -112,21 +120,27 @@
         return;
       }
 
-      /* 4b. Wysyłka przez usługę formularzy (gdy podłączona, wyłącznie po HTTPS) */
+      /* 4b. Wysyłka PROSTO na naszą skrzynkę (gdy podłączona, wyłącznie po HTTPS).
+             Klientowi nic się nie otwiera — klika i gotowe. */
       setStatus("Wysyłam…", "");
       var btn = form.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
 
+      var dane = new FormData(form);
+      dane.delete("firma_www");                       // nie wysyłaj pola-pułapki
+      dane.set("_subject", "Zapytanie o wycenę — " + imie + " (" + telefon + ")");
+      if (email) dane.set("_replyto", email);         // odpowiadasz jednym kliknięciem
+
       fetch(action, {
         method: "POST",
-        body: new FormData(form),
+        body: dane,
         headers: { Accept: "application/json" }
       })
         .then(function (res) {
           if (res.ok) {
             wyslany = true;
             form.reset();
-            setStatus("Dziękujemy! Odezwiemy się z wyceną najszybciej jak to możliwe.", "is-ok");
+            setStatus("Dziękujemy! Zgłoszenie dotarło — odezwiemy się z wyceną najszybciej jak to możliwe.", "is-ok");
           } else {
             if (btn) btn.disabled = false;
             setStatus("Coś poszło nie tak. Zadzwoń proszę: " + TELEFON + ".", "is-err");

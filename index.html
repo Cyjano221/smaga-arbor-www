@@ -24,7 +24,7 @@
   <!-- Nie zdradzaj adresu naszej strony innym serwisom -->
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <!-- ?v= wymusza pobranie nowej wersji po aktualizacji strony (omija cache przeglądarki) -->
-  <link rel="stylesheet" href="css/style.css?v=2" />
+  <link rel="stylesheet" href="css/style.css?v=3" />
 </head>
 <body>
 
@@ -65,7 +65,7 @@
       <p class="hero__eyebrow">Limanowa · Tymbark · Nowy Sącz i okolice</p>
       <h1 class="hero__title">Trudna wycinka i pielęgnacja drzew — bezpiecznie, czysto, na czas.</h1>
       <p class="hero__lead">
-        Zajmujemy się wycinką drzew w trudnych warunkach, przycinaniem korón i pielęgnacją.
+        Zajmujemy się wycinką drzew w trudnych warunkach, przycinaniem koron i pielęgnacją.
         Własny transport pozwala nam uprzątnąć teren do końca — zabieramy gałęzie i pnie.
       </p>
       <div class="hero__cta">
@@ -140,12 +140,12 @@
       </div>
 
       <div class="shots">
-        <figure class="shot shot--1"><figcaption>Uprzątnięta wycinka przy domu</figcaption></figure>
-        <figure class="shot shot--2"><figcaption>Ścinka w lesie liściastym</figcaption></figure>
-        <figure class="shot shot--3"><figcaption>Trudny teren — buczyna na stromiźnie</figcaption></figure>
-        <figure class="shot shot--4"><figcaption>Praca z panoramą Beskidu</figcaption></figure>
-        <figure class="shot shot--5"><figcaption>Duże drzewo — cięcie kontrolowane</figcaption></figure>
-        <figure class="shot shot--6"><figcaption>Zbliżenie — cięcie grubego pnia</figcaption></figure>
+        <figure class="shot shot--1" role="img" aria-label="Uprzątnięty teren po wycince przy domu"></figure>
+        <figure class="shot shot--2" role="img" aria-label="Wycinka w lesie liściastym"></figure>
+        <figure class="shot shot--3" role="img" aria-label="Wycinka na stromym stoku"></figure>
+        <figure class="shot shot--4" role="img" aria-label="Praca przy dużym drzewie"></figure>
+        <figure class="shot shot--5" role="img" aria-label="Cięcie kontrolowane dużego drzewa"></figure>
+        <figure class="shot shot--6" role="img" aria-label="Cięcie grubego pnia"></figure>
       </div>
       <p class="gallery__note">Wybrane realizacje z naszych zleceń.</p>
     </div>
@@ -297,9 +297,15 @@
                    pattern="[0-9+\-()\s]{9,24}" autocomplete="tel" placeholder="600 100 200" />
           </label>
         </div>
-        <label>Lokalizacja (miejscowość)
-          <input type="text" name="lokalizacja" required maxlength="80" autocomplete="address-level2" placeholder="np. Tymbark" />
-        </label>
+        <div class="form__row">
+          <label>E-mail <span class="opt">(opcjonalnie)</span>
+            <input type="email" name="email" maxlength="120" inputmode="email"
+                   autocomplete="email" placeholder="jan.kowalski@example.com" />
+          </label>
+          <label>Lokalizacja (miejscowość)
+            <input type="text" name="lokalizacja" required maxlength="80" autocomplete="address-level2" placeholder="np. Tymbark" />
+          </label>
+        </div>
         <div class="form__row">
           <label>Liczba drzew
             <input type="text" name="liczba" maxlength="10" inputmode="numeric" placeholder="np. 2" />
@@ -322,8 +328,8 @@
         <label>Preferowany termin (orientacyjnie)
           <input type="date" name="termin" />
         </label>
-        <p class="form__hint">📷 Masz zdjęcia drzewa? Dołączysz je w mailu po wysłaniu formularza — bardzo pomagają w wycenie.</p>
-        <button type="submit" class="btn btn--primary btn--lg btn--block">Wyślij i poproś o wycenę</button>
+        <p class="form__hint">📷 Masz zdjęcia drzewa? Wyślij je potem na <b>smagaarbor@gmail.com</b> lub MMS-em — bardzo pomagają w wycenie.</p>
+        <button type="submit" class="btn btn--primary btn--lg btn--block">Wyślij prośbę o wycenę</button>
         <p class="form__status" id="formStatus" role="status"></p>
       </form>
     </div>
@@ -355,6 +361,6 @@
     </div>
   </footer>
 
-  <script src="js/main.js?v=2"></script>
+  <script src="js/main.js?v=3"></script>
 </body>
 </html>

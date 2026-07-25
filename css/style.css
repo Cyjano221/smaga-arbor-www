@@ -153,14 +153,6 @@ a { color: inherit; text-decoration: none; }
   transition: transform .18s ease, box-shadow .18s ease;
 }
 .shot:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
-.shot::before {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(to top, rgba(9,24,14,.78) 0%, rgba(9,24,14,.15) 45%, transparent 65%);
-}
-.shot figcaption {
-  position: relative; z-index: 1; color: #fff; font-size: .92rem; font-weight: 600;
-  padding: 16px; text-shadow: 0 1px 3px rgba(0,0,0,.4);
-}
 .shot--1 { background-image: url('../images/realizacja-1.jpg'); }
 .shot--2 { background-image: url('../images/realizacja-2.jpg'); }
 .shot--3 { background-image: url('../images/realizacja-3.jpg'); }
@@ -220,6 +212,7 @@ a { color: inherit; text-decoration: none; }
 }
 .form textarea { resize: vertical; }
 .form__hint { font-size: .84rem; color: var(--muted); font-weight: 400; }
+.opt { font-weight: 400; color: var(--muted); font-size: .82rem; }
 /* Pułapka na boty — niewidoczna dla ludzi, ale obecna w kodzie dla automatów.
    Celowo NIE display:none — część botów wykrywa i pomija ukryte tak pola. */
 .hp { position: absolute !important; left: -9999px !important; width: 1px; height: 1px; overflow: hidden; }
