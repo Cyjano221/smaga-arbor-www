@@ -205,10 +205,11 @@
   </div>
 
   <div class="note">
-    Model wg standardu rynkowego 2026: wycena od obwodu pnia. Alpinistyczna/sekcyjna ~1 410–2 090 zł za typowe drzewo
-    (obwód do ~315 cm), w trudnych warunkach do ~4 800 zł; średnia krajowa ~1 800 zł/szt.; frezowanie ~2,5–3 zł/cm;
-    wywóz 250–1 200 zł. Cena bazowa = <b>samo obalenie</b>; każdy moduł zakresu dolicza procent od tej kwoty.
-    Stawki (zł/cm oraz % modułów) możesz podkręcić pod swoją realną pracę — powiedz, to zmienię.
+    <b>Skalibrowane 25.07.2026 na podstawie 6 cenników konkurencji</b> — pełne dane i źródła w <code>docs/ceny_rynkowe_2026.md</code>.
+    Cena bazowa = <b>samo obalenie</b> = max(minimum za wyjazd, zł/cm obwodu × korekta wysokości).
+    Każdy moduł zakresu to max(minimum rynkowe, procent od obalenia) — bo wywóz i pocięcie mają koszt stały.
+    Widełki rynkowe celują w <b>dolno-środkową półkę</b>, bo na wsi jest taniej niż w miastach.
+    Po pierwszych zleceniach podaj mi realne ceny — dostroję stawki pod Ciebie.
   </div>
 </div>
 
@@ -216,16 +217,47 @@
 (function(){
   "use strict";
 
-  // Model wg standardu rynkowego 2026: wycena od CENTYMETRA OBWODU pnia (mierzony na 130 cm).
-  // Dane: alpinistyczna standard ~5,5-7 zł/cm, w trudnych warunkach do ~10-13 zł/cm.
-  var RATE  = { ziemia:3.0, linowa:6.0, zwyzka:6.5 };          // zł/cm — stawka bazowa (standard)
+  /* ════════════════════════════════════════════════════════════════
+     KALIBRACJA wg badania rynku z 25.07.2026 (6 źródeł).
+     Pełne dane i źródła: docs/ceny_rynkowe_2026.md
+     Model: cena = max(minimum za wyjazd, zł/cm × obwód × korekta wysokości)
+     Minimum jest kluczowe — w cenie siedzi koszt stały (dojazd, przygotowanie),
+     niezależny od grubości drzewa. Bez niego małe drzewa były wyceniane za tanio.
+     ════════════════════════════════════════════════════════════════ */
+  /* Model: KOSZT_STALY + zł/cm × obwód, potem × korekta wysokości.
+     Czysto liniowy model (tylko zł/cm) NIE pasował do cenników — zaniżał małe
+     i średnie drzewa. Sprawdzone na konkretnych przykładach z rynku:
+       ziemia 80 cm, 8 m  -> 670 zł   (cennik OnGeo: 600–800 zł) ✔
+       linowa 250 cm      -> 1 425 zł (cennik: ~1 410–1 420 zł) ✔
+       linowa 400 cm      -> 2 112 zł (cennik >315 cm: 1 970–2 090 zł) ✔ */
+  var BASE_FIX = { ziemia:350, linowa:600, zwyzka:700 };        // koszt stały: dojazd + przygotowanie
+  var RATE     = { ziemia:4.0, linowa:3.3, zwyzka:3.4 };        // zł za cm obwodu
   var HMOD  = { mala:0.9, srednia:1.0, duza:1.1, bardzo:1.25 }; // korekta za wysokość
-  var FLOOR = { ziemia:300, linowa:500, zwyzka:600 };          // cena minimalna za drzewo
-  // Widełki konkurencji w zł/cm obwodu (rozpiętość: łatwe -> trudne)
-  var MKT   = { ziemia:[2.5,5.0], linowa:[5.5,11.0], zwyzka:[6.0,11.0] };
+  var FLOOR = { ziemia:350, linowa:700, zwyzka:800 };           // twarde minimum za drzewo
 
-  // Moduły zakresu prac — dopłaty liczone od ceny bazowej (obalenia)
-  var MOD = { pociecie:0.25, galezie:0.20, drewno:0.15, uprzat:0.10, opal:-0.10 };
+  /* Widełki rynkowe ZA 1 DRZEWO (zł) — wprost z cenników konkurencji.
+     Celujemy w dolno-środkową część, bo na wsi jest taniej niż w miastach. */
+  var MKT = {
+    ziemia: { mala:[200,600],  srednia:[400,1200], duza:[900,2500],  bardzo:[1500,3500] },
+    linowa: { mala:[700,1500], srednia:[1000,2200],duza:[1400,3000], bardzo:[2600,5500] },
+    zwyzka: { mala:[800,1600], srednia:[1200,2500],duza:[1600,3200], bardzo:[2800,5000] }
+  };
+
+  /* Moduły zakresu prac.
+     pct = procent od ceny obalenia, min = kwota minimalna wg cennikow rynkowych.
+     Liczymy max(min, pct × baza) — bo wywóz czy pocięcie ma koszt stały
+     (transport, czas, paliwo) niezależny od grubości pnia.
+     Rynek: pocięcie 100 zł/m³ (50–500) · wywóz gałęzi 200–950 · zrębkowanie 300–400/h
+            wywóz drewna 150–400 za transport · frezowanie 250–700 */
+  var MOD = {
+    pociecie: { pct:0.25, min:150 },
+    galezie:  { pct:0.20, min:250 },
+    drewno:   { pct:0.15, min:200 },
+    uprzat:   { pct:0.10, min:120 },
+    opal:     { pct:-0.10, min:0 }    // upust — bez minimum
+  };
+  var FREZ_ZL_CM = 3;      // zł za cm obwodu
+  var FREZ_MIN   = 250;    // minimum za pniak (rynek: 250–700)
   var MODY = ["pociecie","galezie","drewno","uprzat","frez","opal"];
   // Gotowe warianty: który moduł jest włączony
   var WARIANT = {
@@ -304,20 +336,33 @@
     // Rabat ilościowy (za drzewo)
     var vol = n>=4?0.90 : n>=2?0.95 : 1.0;
 
-    // Cena bazowa za 1 drzewo = stawka zł/cm × obwód × korekta wysokości (min. cena floor)
-    var core=Math.max(FLOOR[metoda], RATE[metoda]*obwod*HMOD[wys]);
+    // Cena bazowa za 1 drzewo = (koszt stały + zł/cm × obwód) × korekta wysokości
+    var core=Math.max(FLOOR[metoda], (BASE_FIX[metoda] + RATE[metoda]*obwod) * HMOD[wys]);
     var per=core*factor;                 // za 1 drzewo z ryzykiem (punktowo)
     var perLo=per*0.90, perHi=per*1.15;
     var subLo=perLo*n*vol, subHi=perHi*n*vol;
 
-    // Moduły zakresu — procent liczony od ceny za obalenie
-    var pct=0;
+    /* Moduły zakresu — każdy jako max(minimum rynkowe, procent od obalenia).
+       Minimum liczone za KAŻDE drzewo (bo za każde trzeba wywieźć/pociąć),
+       ale z rabatem ilościowym, żeby przy kilku drzewach nie wychodziło absurdalnie. */
+    var kwotyMod = {};
+    var dodLo=0, dodHi=0;
     ["pociecie","galezie","drewno","uprzat","opal"].forEach(function(m){
-      if(on[m]) pct += MOD[m];
+      if(!on[m]) return;
+      var cfg=MOD[m];
+      if(cfg.pct < 0){                                  // upust — czysty procent
+        dodLo += subLo*cfg.pct;  dodHi += subHi*cfg.pct;
+        kwotyMod[m] = null;                             // pokażemy jako procent
+        return;
+      }
+      var minCalosc = cfg.min * n * vol;                // minimum × liczba drzew
+      var lo = Math.max(minCalosc, subLo*cfg.pct);
+      var hi = Math.max(minCalosc, subHi*cfg.pct);
+      dodLo += lo; dodHi += hi;
+      kwotyMod[m] = (lo+hi)/2;
     });
-    var dodLo=subLo*pct, dodHi=subHi*pct;
 
-    var frezVal = on.frez ? 3*obwod*n : 0;
+    var frezVal = on.frez ? Math.max(FREZ_MIN*n, FREZ_ZL_CM*obwod*n) : 0;
 
     var totLo = subLo+dodLo+frezVal;
     var totHi = subHi+dodHi+frezVal;
@@ -329,26 +374,39 @@
 
     var effRate = obwod>0 ? (per/obwod) : 0;
     var rows=[];
-    rows.push(["Stawka bazowa ("+labelMetoda(metoda)+")", fmt(RATE[metoda])+" zł/cm × "+fmt(obwod)+" cm"]);
+    rows.push(["Dojazd + przygotowanie ("+labelMetoda(metoda)+")", fmt(BASE_FIX[metoda])+" zł"]);
+    rows.push(["Praca wg obwodu", RATE[metoda].toFixed(1)+" zł/cm × "+fmt(obwod)+" cm = "+fmt(RATE[metoda]*obwod)+" zł"]);
     if(HMOD[wys]!==1) rows.push(["Korekta za wysokość ("+labelWys(wys)+")", "×"+HMOD[wys].toFixed(2)]);
     if(factor>1.001) rows.push(["Narzuty za ryzyko/dostęp", "×"+factor.toFixed(2)]);
     rows.push(["Obalenie — cena za 1 drzewo", fmt(round50(per))+" zł ("+effRate.toFixed(1)+" zł/cm)"]);
     if(n>1) rows.push(["Liczba drzew × "+n+(vol<1?" (rabat "+Math.round((1-vol)*100)+"%)":""), ""]);
     var NAZWA={pociecie:"Pocięcie drewna",galezie:"Wywóz gałęzi",drewno:"Wywóz drewna",uprzat:"Uprzątnięcie terenu",opal:"Drewno na opał dla nas"};
     ["pociecie","galezie","drewno","uprzat","opal"].forEach(function(m){
-      if(on[m]) rows.push([NAZWA[m], (MOD[m]>0?"+":"−")+Math.round(Math.abs(MOD[m])*100)+"%"]);
+      if(!on[m]) return;
+      if(kwotyMod[m]===null){                                   // upust
+        rows.push([NAZWA[m], "−"+Math.round(Math.abs(MOD[m].pct)*100)+"%"]);
+      } else {
+        var czyMin = kwotyMod[m] <= MOD[m].min*n*vol + 1;
+        rows.push([NAZWA[m] + (czyMin ? " (stawka min.)" : ""), "+"+fmt(round50(kwotyMod[m]))+" zł"]);
+      }
     });
-    if(on.frez) rows.push(["Frezowanie ("+fmt(obwod)+" cm × 3 zł × "+n+")", "+"+fmt(frezVal)+" zł"]);
+    if(on.frez){
+      var czyMinFrez = frezVal <= FREZ_MIN*n + 1;
+      rows.push(["Frezowanie pnia" + (czyMinFrez ? " (stawka min.)" : " ("+fmt(obwod)+" cm × "+FREZ_ZL_CM+" zł)"), "+"+fmt(frezVal)+" zł"]);
+    }
     var html="";
     rows.forEach(function(r){
       html+='<div class="li'+(r[1]===""?" muted":"")+'"><span>'+r[0]+'</span><span>'+r[1]+'</span></div>';
     });
     $("break").innerHTML=html;
 
-    // Rynek — widełki konkurencji za 1 drzewo = obwód × korekta wys × [stawka min, max] (zł/cm)
-    var hmod=HMOD[wys];
-    var mLo=Math.max(FLOOR[metoda]*0.9, MKT[metoda][0]*obwod*hmod);
-    var mHi=Math.max(FLOOR[metoda],     MKT[metoda][1]*obwod*hmod);
+    /* Rynek — widełki konkurencji ZA 1 DRZEWO (docs/ceny_rynkowe_2026.md).
+       Cenniki podają je dla warunków STANDARDOWYCH, a osobno "trudne warunki:
+       2 600–5 500 zł". Dlatego widełki skalujemy tym samym narzutem ryzyka co
+       naszą cenę — inaczej przy dachu i linii nasza cena zawsze wyglądałaby
+       na zawyżoną, choć rynek w takich warunkach bierze tyle samo albo więcej. */
+    var mk2=MKT[metoda][wys];
+    var mLo=mk2[0]*factor, mHi=mk2[1]*factor;
     var scaleHi = Math.max(mHi, perHi)*1.05;
     $("mRange").style.left = (mLo/scaleHi*100)+"%";
     $("mRange").style.width = ((mHi-mLo)/scaleHi*100)+"%";
