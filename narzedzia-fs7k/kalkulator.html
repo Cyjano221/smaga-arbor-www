@@ -63,6 +63,20 @@
   .chk--minus b{color:var(--amber)}
   .chk--minus.on{border-color:var(--amber);background:#fbead0}
   .scope__hint{font-size:.8rem;color:var(--muted);margin-top:10px;line-height:1.45;min-height:1em}
+  .opt2{font-weight:400;color:var(--muted);font-size:.78rem}
+  .row{display:flex;gap:8px;align-items:center;margin-top:6px}
+  .row input{flex:0 0 90px}
+  .mini{flex:1;background:var(--green-50);color:var(--green-700);border:1.5px solid #d7e7dc;
+    padding:9px 10px;border-radius:9px;font-family:inherit;font-size:.8rem;font-weight:700;cursor:pointer}
+  .mini:hover{background:#e2efe6}
+
+  /* Panel oplacalnosci */
+  .profit{margin-top:14px}
+  .profit__row{display:flex;justify-content:space-between;font-size:.86rem;padding:4px 0}
+  .profit__row span:last-child{font-weight:600;color:var(--ink)}
+  .profit__row--sum{border-top:1px solid var(--line);margin-top:6px;padding-top:8px}
+  .profit__rate{font-size:1.5rem;font-weight:800;color:var(--green-700);text-align:center;margin:12px 0 4px}
+  .profit__ref{font-size:.76rem;color:var(--muted);margin-top:8px;line-height:1.4}
 
   /* Wynik */
   .price{font-size:2.3rem;font-weight:800;color:var(--green-700);line-height:1.1}
@@ -179,6 +193,24 @@
         </div>
         <div class="scope__hint" id="scopeHint"></div>
       </div>
+
+      <div class="scope">
+        <label for="klient">👤 Kto jest klientem?</label>
+        <select id="klient">
+          <option value="pryw" selected>Osoba prywatna (cena podstawowa)</option>
+          <option value="firma">Firma / B2B — faktura, przelew (+25%)</option>
+          <option value="inst">Instytucja, gmina, przetarg (+45%)</option>
+        </select>
+        <div class="scope__hint" id="klientHint"></div>
+      </div>
+
+      <div class="scope">
+        <label>⏱️ Szacowany czas pracy <span class="opt2">(możesz nadpisać)</span></label>
+        <div class="row">
+          <input type="number" id="godziny" min="0.5" step="0.5" />
+          <button type="button" id="przeliczCzas" class="mini">↻ Przelicz automatycznie</button>
+        </div>
+      </div>
     </div>
 
     <!-- WYNIK -->
@@ -197,6 +229,16 @@
         </div>
         <div class="barlabels"><span id="mLo">0</span><span id="mHi">0</span></div>
         <div class="verdict" id="verdict"></div>
+      </div>
+
+      <div class="market profit">
+        <h3>Czy na tym zarabiam?</h3>
+        <div class="profit__row"><span>Szacowany czas pracy</span><span id="pCzas">—</span></div>
+        <div class="profit__row"><span>Koszty (paliwo, łańcuch, olej, wywóz)</span><span id="pKoszty">—</span></div>
+        <div class="profit__row profit__row--sum"><span>Zostaje w kieszeni</span><span id="pZostaje">—</span></div>
+        <div class="profit__rate" id="pStawka">—</div>
+        <div class="verdict" id="pWerdykt"></div>
+        <div class="profit__ref" id="pOdniesienie"></div>
       </div>
 
       <button class="copybtn" id="copy">📋 Skopiuj ofertę dla klienta</button>
@@ -258,6 +300,44 @@
   };
   var FREZ_ZL_CM = 3;      // zł za cm obwodu
   var FREZ_MIN   = 250;    // minimum za pniak (rynek: 250–700)
+
+  /* ── Narzut wg typu klienta ──
+     Instytucje i przetargi płacą więcej za TĘ SAMĄ robotę, bo dochodzą:
+     wymogi formalne (OC, uprawnienia, dokumentacja), termin płatności 30–60 dni,
+     faktura VAT, zabezpieczenie i oznakowanie terenu publicznego, protokoły odbioru
+     — no i mniej firm spełnia te wymogi, więc konkurencja jest mniejsza.
+     UWAGA: nie znalazłem publikowanych stawek jednostkowych z przetargów
+     (gminy publikują ogłoszenia i wartości umów, nie ceny za drzewo),
+     więc te narzuty to oszacowanie na podstawie powyższych czynników. */
+  var KLIENT = { pryw:1.00, firma:1.25, inst:1.45 };
+  var KLIENT_OPIS = {
+    pryw: "Cena podstawowa, gotówka lub przelew, bez dodatkowych formalności.",
+    firma: "+25% — faktura, przelew z odroczonym terminem, wymagane OC. Potrzebna zarejestrowana firma.",
+    inst: "+45% — przetarg/gmina: OC, uprawnienia, dokumentacja, oznakowanie terenu, protokoły odbioru, płatność 30–60 dni. ⚠️ WYMAGA firmy (JDG), NIP-u i faktury — na działalności nierejestrowanej niedostępne."
+  };
+
+  /* ── Szacowanie czasu pracy (godziny na CAŁE zlecenie) ──
+     Podstawa: samo obalenie jednego drzewa. Do tego doliczamy moduły. */
+  var CZAS_BAZA = {
+    ziemia: { mala:1.0, srednia:2.0, duza:3.5, bardzo:5.0 },
+    linowa: { mala:3.0, srednia:5.0, duza:7.5, bardzo:11.0 },
+    zwyzka: { mala:2.0, srednia:3.0, duza:4.5, bardzo:7.0 }
+  };
+  var CZAS_MOD = { pociecie:0.7, galezie:1.5, drewno:1.2, uprzat:0.6, frez:0.8 }; // godz. na drzewo
+  /* Czas stały na zlecenie — dojazd tam i z powrotem, rozstawienie się,
+     zabezpieczenie terenu, zwinięcie sprzętu. Bez tego stawka godzinowa
+     wychodziła nierealnie wysoka (bo cena zawiera koszt wyjazdu, a czas go nie liczył). */
+  var CZAS_STALY = 1.5;
+
+  /* ── Koszty zmienne ──
+     Rynek: pilarz z własnym sprzętem 80–150 zł/h netto, arborysta linowy 150–250 zł/h.
+     Do tych stawek porównujemy Twoją realną zapłatę za godzinę. */
+  var KOSZT_H = 18;              // paliwo + olej + łańcuch + amortyzacja, na godzinę pracy
+  var KOSZT_WYWOZ = 70;          // przejazd ciągnikiem z przyczepą (paliwo), za wyjazd
+  var KOSZT_DOJAZD = 40;         // paliwo na dojazd tam i z powrotem (zlecenie lokalne)
+  var CEL_STAWKA = {             // docelowa stawka godzinowa wg rynku
+    ziemia: [80,150], linowa: [150,250], zwyzka: [120,220]
+  };
   var MODY = ["pociecie","galezie","drewno","uprzat","frez","opal"];
   // Gotowe warianty: który moduł jest włączony
   var WARIANT = {
@@ -277,12 +357,18 @@
   };
 
   var $ = function(id){return document.getElementById(id);};
-  var ids = ["metoda","wysokosc","liczba","budynek","dojazd","obwod","linia"].concat(MODY);
+  var czasReczny = false;        // czy użytkownik sam wpisał godziny
+
+  var ids = ["metoda","wysokosc","liczba","budynek","dojazd","obwod","linia","klient"].concat(MODY);
   ids.forEach(function(id){
     var el=$(id);
     el.addEventListener("input",calc);
     el.addEventListener("change",calc);
   });
+
+  /* Ręczna zmiana godzin — przestajemy nadpisywać automatem */
+  $("godziny").addEventListener("input", function(){ czasReczny = true; calc(); });
+  $("przeliczCzas").addEventListener("click", function(){ czasReczny = false; calc(); });
   ["linia"].concat(MODY).forEach(function(id){
     var el=$(id), wrap=$("wrap-"+id);
     function sync(){wrap.classList.toggle("on",el.checked);}
@@ -364,8 +450,12 @@
 
     var frezVal = on.frez ? Math.max(FREZ_MIN*n, FREZ_ZL_CM*obwod*n) : 0;
 
-    var totLo = subLo+dodLo+frezVal;
-    var totHi = subHi+dodHi+frezVal;
+    // Narzut za typ klienta (instytucja/przetarg płaci więcej za tę samą robotę)
+    var typKl = $("klient").value;
+    var mKl = KLIENT[typKl] || 1;
+
+    var totLo = (subLo+dodLo+frezVal) * mKl;
+    var totHi = (subHi+dodHi+frezVal) * mKl;
     var reco = round50((totLo+totHi)/2);
 
     // Wyświetlenie
@@ -406,23 +496,72 @@
        naszą cenę — inaczej przy dachu i linii nasza cena zawsze wyglądałaby
        na zawyżoną, choć rynek w takich warunkach bierze tyle samo albo więcej. */
     var mk2=MKT[metoda][wys];
-    var mLo=mk2[0]*factor, mHi=mk2[1]*factor;
-    var scaleHi = Math.max(mHi, perHi)*1.05;
+    // Skalujemy tym samym narzutem ryzyka ORAZ narzutem za typ klienta,
+    // żeby porównanie było jabłka-do-jabłek (instytucje też płacą więcej).
+    var mLo=mk2[0]*factor*mKl, mHi=mk2[1]*factor*mKl;
+    var perPokaz = per*mKl;
+    var scaleHi = Math.max(mHi, perHi*mKl)*1.05;
     $("mRange").style.left = (mLo/scaleHi*100)+"%";
     $("mRange").style.width = ((mHi-mLo)/scaleHi*100)+"%";
     var mineEl=$("mMine");
-    mineEl.style.left = Math.min(99,(per/scaleHi*100))+"%";
-    mineEl.setAttribute("data-l","1 drzewo: "+fmt(round50(per)));
+    mineEl.style.left = Math.min(99,(perPokaz/scaleHi*100))+"%";
+    mineEl.setAttribute("data-l","Obalenie 1 drzewa: "+fmt(round50(perPokaz)));
     $("mLo").textContent = fmt(mLo)+" zł";
     $("mHi").textContent = fmt(mHi)+" zł";
 
     var v=$("verdict");
-    if(per < mLo){ v.className="verdict low"; v.textContent="⬇ Poniżej rynku — spokojnie możesz podnieść cenę."; }
-    else if(per > mHi){ v.className="verdict high"; v.textContent="⬆ Powyżej rynku — uzasadnij trudnością (linia, dach, brak dojazdu)."; }
+    if(perPokaz < mLo){ v.className="verdict low"; v.textContent="⬇ Poniżej rynku — spokojnie możesz podnieść cenę."; }
+    else if(perPokaz > mHi){ v.className="verdict high"; v.textContent="⬆ Powyżej rynku — uzasadnij trudnością (linia, dach, brak dojazdu)."; }
     else { v.className="verdict in"; v.textContent="✓ W widełkach rynkowych — cena konkurencyjna."; }
 
-    // Podpowiedź do wariantu
+    // Podpowiedź do wariantu i typu klienta
     $("scopeHint").textContent = OPIS[$("wariant").value] || "";
+    $("klientHint").textContent = KLIENT_OPIS[typKl] || "";
+
+    /* ═══ CZY NA TYM ZARABIAM? ═══ */
+    // 1. Szacowany czas
+    var hAuto = CZAS_BAZA[metoda][wys] * n;
+    ["pociecie","galezie","drewno","uprzat","frez"].forEach(function(m){
+      if(on[m]) hAuto += CZAS_MOD[m] * n;
+    });
+    hAuto *= (1 + (factor-1)*0.5);          // trudne warunki wydłużają pracę (połowa narzutu ceny)
+    hAuto += CZAS_STALY;                    // dojazd, rozstawienie, zwinięcie sprzętu
+    hAuto = Math.max(1, Math.round(hAuto*2)/2);   // zaokrąglij do 0,5 h
+
+    if(!czasReczny) $("godziny").value = hAuto;
+    var h = Math.max(0.5, parseFloat($("godziny").value) || hAuto);
+
+    // 2. Koszty zmienne
+    var wywozy = (on.galezie?1:0) + (on.drewno?1:0);
+    var koszty = KOSZT_DOJAZD + KOSZT_H*h + KOSZT_WYWOZ*wywozy*Math.max(1, Math.ceil(n/2));
+
+    // 3. Co zostaje i ile to na godzinę
+    var zostaje = reco - koszty;
+    var naGodzine = zostaje / h;
+
+    $("pCzas").textContent = h.toFixed(1).replace(".",",")+" h" + (czasReczny ? " (Twoje)" : " (szacunek)");
+    $("pKoszty").textContent = "−"+fmt(koszty)+" zł";
+    $("pZostaje").textContent = fmt(zostaje)+" zł";
+    $("pStawka").textContent = fmt(naGodzine)+" zł/h";
+
+    var cel = CEL_STAWKA[metoda];
+    var pw = $("pWerdykt");
+    if(naGodzine < cel[0]*0.75){
+      pw.className="verdict high";
+      pw.textContent="⚠ Za tanio! Rynek za taką pracę płaci "+cel[0]+"–"+cel[1]+" zł/h. Podnieś cenę.";
+    } else if(naGodzine < cel[0]){
+      pw.className="verdict low";
+      pw.textContent="⬇ Poniżej rynkowej stawki ("+cel[0]+"–"+cel[1]+" zł/h) — da się wziąć więcej.";
+    } else if(naGodzine <= cel[1]){
+      pw.className="verdict in";
+      pw.textContent="✓ Uczciwie — mieścisz się w rynkowych "+cel[0]+"–"+cel[1]+" zł/h.";
+    } else {
+      pw.className="verdict in";
+      pw.textContent="✓✓ Bardzo dobra stawka (rynek: "+cel[0]+"–"+cel[1]+" zł/h). Pilnuj, żeby cena nie odstraszyła klienta.";
+    }
+    $("pOdniesienie").textContent =
+      "Odniesienie rynkowe: pilarz z własnym sprzętem 80–150 zł/h, arborysta linowy 150–250 zł/h, "+
+      "pomocnik 40–70 zł/h. Kwota „zostaje\" jest przed podatkiem.";
 
     last={metoda:metoda,wys:wys,n:n,totLo:totLo,totHi:totHi,reco:reco,on:on,wariant:$("wariant").value};
   }
