@@ -64,6 +64,13 @@
   .chk--minus.on{border-color:var(--amber);background:#fbead0}
   .scope__hint{font-size:.8rem;color:var(--muted);margin-top:10px;line-height:1.45;min-height:1em}
   .opt2{font-weight:400;color:var(--muted);font-size:.78rem}
+  /* Wybor rodzaju zlecenia — najwazniejszy przelacznik */
+  .tryb{background:#f0f6f1;border:1.5px solid var(--green-500);border-radius:11px;padding:14px;margin-bottom:16px}
+  .tryb label{margin-top:0;font-size:.86rem}
+  .tryb__hint{font-size:.79rem;color:var(--green-700);margin-top:9px;line-height:1.45;font-weight:600}
+  .drewno-info{background:#fffdf7;border:1px solid #e8d9b0;border-radius:9px;padding:11px 13px;
+    margin-top:12px;font-size:.8rem;color:#6b5518;line-height:1.5}
+  .drewno-info b{color:#8a6a12}
   .row{display:flex;gap:8px;align-items:center;margin-top:6px}
   .row input{flex:0 0 90px}
   .mini{flex:1;background:var(--green-50);color:var(--green-700);border:1.5px solid #d7e7dc;
@@ -126,6 +133,27 @@
         <textarea id="opis" rows="3" placeholder="np. Dwa dęby, obwód ok. 200 cm, wysokie na 15 m, blisko dachu, dużo gałęzi do wywozu, trudny dojazd"></textarea>
         <button type="button" id="parseBtn">✨ Wypełnij pola z opisu</button>
         <div class="nlp__msg" id="nlpMsg"></div>
+      </div>
+
+      <div class="tryb">
+        <label for="tryb">🎯 Rodzaj zlecenia — to zmienia CAŁY sposób wyceny</label>
+        <select id="tryb">
+          <option value="ogrod" selected>🏡 Przy domu / w ogrodzie — wycena ZA DRZEWO</option>
+          <option value="las">🌲 W lesie / na działce leśnej — wycena ZA KUBIK (m³)</option>
+        </select>
+        <div class="tryb__hint" id="trybHint"></div>
+      </div>
+
+      <div id="poleLas" class="scope" hidden>
+        <label>Objętość drewna (m³) <span class="opt2">— liczone z obwodu i wysokości, możesz nadpisać</span></label>
+        <div class="row">
+          <input type="number" id="kubiki" min="0.1" step="0.5" />
+          <button type="button" id="przeliczKubiki" class="mini">↻ Przelicz z wymiarów</button>
+        </div>
+        <div class="mods">
+          <label class="chk" id="wrap-zrywka"><input type="checkbox" id="zrywka" /> Zrywka do drogi <b>+25 zł/m³</b></label>
+        </div>
+        <div class="scope__hint" id="lasHint"></div>
       </div>
 
       <label>Metoda wycinki</label>
@@ -239,6 +267,7 @@
         <div class="profit__rate" id="pStawka">—</div>
         <div class="verdict" id="pWerdykt"></div>
         <div class="profit__ref" id="pOdniesienie"></div>
+        <div class="drewno-info" id="drewnoInfo" hidden></div>
       </div>
 
       <button class="copybtn" id="copy">📋 Skopiuj ofertę dla klienta</button>
@@ -338,6 +367,35 @@
   var CEL_STAWKA = {             // docelowa stawka godzinowa wg rynku
     ziemia: [80,150], linowa: [150,250], zwyzka: [120,220]
   };
+
+  /* ═══════════════════════════════════════════════════════════════════
+     TRYB LEŚNY — to CAŁKOWICIE inny rynek niż wycinka przy domu.
+     W lesie płaci się ZA KUBIK, nie za drzewo, i stawki są kilkanaście
+     razy niższe: otwarta przestrzeń, brak ryzyka dla budynków, brak
+     wywozu i uprzątania, a zamawiający (właściciel lasu / ZUL) zna stawki.
+
+     Dane rynkowe:
+     - Tata bierze 30–40 zł/m³ za samo obalenie
+     - Na forum leśnym oferowano 35 zł/m³ i wykonawcy uznali to za ZA MAŁO,
+       żeby pokryć koszty pilarza + dwóch ludzi do zrywki
+     - Drewno opałowe w detalu: iglaste 160–185 zł/m³, brzoza/olcha 230–240,
+       buk/dąb/grab/jesion 250–280 zł/m³
+     ═══════════════════════════════════════════════════════════════════ */
+  var LAS_ZL_M3      = { min:40, max:55 };  // nasza stawka za obalenie (wyżej niż Taty 30–40)
+  var LAS_ZRYWKA_M3  = 25;                  // zrywka do drogi, dopłata za m³
+  var LAS_MIN        = 300;                 // minimum za wyjazd do lasu
+  var LAS_H_DRZEWO   = 0.25;                // realnie ~15 min na drzewo (Tata: 4 szt. w 50 min)
+  var LAS_H_STALY    = 1.0;                 // dojazd, dojście, paliwo, ostrzenie
+  var LAS_H_ZRYWKA   = 0.15;                // dodatkowy czas na m³ przy zrywce
+  var DREWNO_SUROWE_M3 = 100;               // ile realnie warte surowe drewno przy drodze (do sprzedaży po sezonowaniu)
+
+  /* Objętość drzewa z obwodu i wysokości (przybliżenie leśne).
+     V = (obwód² / 4π) × wysokość × współczynnik pełności */
+  function objetoscM3(obwodCm, wysM){
+    var pole = (obwodCm*obwodCm)/(4*Math.PI)/10000;   // m²
+    return pole * wysM * 0.45;
+  }
+  var WYS_M = { mala:4, srednia:9, duza:16, bardzo:23 };  // typowa wysokość w metrach
   var MODY = ["pociecie","galezie","drewno","uprzat","frez","opal"];
   // Gotowe warianty: który moduł jest włączony
   var WARIANT = {
@@ -359,7 +417,8 @@
   var $ = function(id){return document.getElementById(id);};
   var czasReczny = false;        // czy użytkownik sam wpisał godziny
 
-  var ids = ["metoda","wysokosc","liczba","budynek","dojazd","obwod","linia","klient"].concat(MODY);
+  var kubikiReczne = false;
+  var ids = ["tryb","metoda","wysokosc","liczba","budynek","dojazd","obwod","linia","klient","zrywka"].concat(MODY);
   ids.forEach(function(id){
     var el=$(id);
     el.addEventListener("input",calc);
@@ -369,6 +428,16 @@
   /* Ręczna zmiana godzin — przestajemy nadpisywać automatem */
   $("godziny").addEventListener("input", function(){ czasReczny = true; calc(); });
   $("przeliczCzas").addEventListener("click", function(){ czasReczny = false; calc(); });
+  $("kubiki").addEventListener("input", function(){ kubikiReczne = true; calc(); });
+  $("przeliczKubiki").addEventListener("click", function(){ kubikiReczne = false; calc(); });
+  $("zrywka").addEventListener("change", function(){ $("wrap-zrywka").classList.toggle("on", this.checked); });
+
+  /* Przełączenie trybu — pokaż/ukryj pola leśne */
+  $("tryb").addEventListener("change", function(){
+    var las = this.value === "las";
+    $("poleLas").hidden = !las;
+    czasReczny = false; kubikiReczne = false;
+  });
   ["linia"].concat(MODY).forEach(function(id){
     var el=$(id), wrap=$("wrap-"+id);
     function sync(){wrap.classList.toggle("on",el.checked);}
@@ -412,6 +481,14 @@
     var obwod=Math.max(0, parseFloat($("obwod").value||"0"));
     var linia=$("linia").checked;
     var on={}; MODY.forEach(function(m){ on[m]=$(m).checked; });
+    var tryb=$("tryb").value;
+
+    $("trybHint").textContent = tryb==="las"
+      ? "W lesie płaci się za KUBIK, nie za drzewo — i stawki są kilkanaście razy niższe niż przy domu. Otwarta przestrzeń, brak ryzyka dla budynków, nic się nie wywozi. Zamawiający zna stawki."
+      : "Przy domu płaci się ZA DRZEWO. Wysokie ceny wynikają z ryzyka (dach, ogrodzenie, linia), technik linowych, wywozu urobku i tego, że klient nie ma alternatywy.";
+
+    /* ══════════════════ TRYB LEŚNY ══════════════════ */
+    if(tryb==="las"){ policzLas(metoda,wys,n,obwod,doj); return; }
 
     // Mnożniki ryzyka
     var mBud = bud===2?1.30 : bud===1?1.15 : 1.0;
@@ -517,6 +594,7 @@
     // Podpowiedź do wariantu i typu klienta
     $("scopeHint").textContent = OPIS[$("wariant").value] || "";
     $("klientHint").textContent = KLIENT_OPIS[typKl] || "";
+    $("drewnoInfo").hidden = true;      // ramka o wartości drewna tylko w trybie leśnym
 
     /* ═══ CZY NA TYM ZARABIAM? ═══ */
     // 1. Szacowany czas
@@ -564,6 +642,102 @@
       "pomocnik 40–70 zł/h. Kwota „zostaje\" jest przed podatkiem.";
 
     last={metoda:metoda,wys:wys,n:n,totLo:totLo,totHi:totHi,reco:reco,on:on,wariant:$("wariant").value};
+  }
+
+  /* ═══════════════ WYCENA LEŚNA (za m³) ═══════════════ */
+  function policzLas(metoda, wys, n, obwod, doj){
+    var zrywka = $("zrywka").checked;
+
+    // 1. Objętość
+    var m3Auto = Math.max(0.1, objetoscM3(obwod, WYS_M[wys]) * n);
+    m3Auto = Math.round(m3Auto*10)/10;
+    if(!kubikiReczne) $("kubiki").value = m3Auto;
+    var m3 = Math.max(0.1, parseFloat($("kubiki").value) || m3Auto);
+
+    // 2. Cena: stawka za m³ (+ zrywka), z minimum za wyjazd
+    var mDoj = doj===2?1.20 : doj===1?1.10 : 1.0;     // trudny terén w lesie też kosztuje
+    var stLo = LAS_ZL_M3.min + (zrywka?LAS_ZRYWKA_M3:0);
+    var stHi = LAS_ZL_M3.max + (zrywka?LAS_ZRYWKA_M3:0);
+    var typKl = $("klient").value, mKl = KLIENT[typKl] || 1;
+
+    var totLo = Math.max(LAS_MIN, stLo*m3*mDoj) * mKl;
+    var totHi = Math.max(LAS_MIN, stHi*m3*mDoj) * mKl;
+    var reco  = round50((totLo+totHi)/2);
+
+    $("priceRange").innerHTML = fmt(totLo)+" – "+fmt(totHi)+" <small>zł</small>";
+    $("reco").innerHTML = "Rekomendowana cena: <b>"+fmt(reco)+" zł</b>";
+
+    // 3. Rozbicie
+    var rows=[];
+    rows.push(["Objętość drewna"+(kubikiReczne?" (Twoja)":" (z wymiarów)"), m3.toFixed(1).replace(".",",")+" m³"]);
+    rows.push(["Stawka za obalenie", fmt(LAS_ZL_M3.min)+"–"+fmt(LAS_ZL_M3.max)+" zł/m³"]);
+    if(zrywka) rows.push(["Zrywka do drogi", "+"+fmt(LAS_ZRYWKA_M3)+" zł/m³"]);
+    if(mDoj>1) rows.push(["Trudny teren", "×"+mDoj.toFixed(2)]);
+    if(mKl>1)  rows.push(["Narzut za typ klienta", "×"+mKl.toFixed(2)]);
+    rows.push(["Efektywnie za m³", fmt(reco/m3)+" zł/m³"]);
+    if(reco<=LAS_MIN*mKl+1) rows.push(["⚠ Zadziałało minimum za wyjazd", fmt(LAS_MIN)+" zł"]);
+    var html=""; rows.forEach(function(r){
+      html+='<div class="li'+(r[1]===""?" muted":"")+'"><span>'+r[0]+'</span><span>'+r[1]+'</span></div>';
+    });
+    $("break").innerHTML=html;
+
+    // 4. Porównanie z rynkiem — w zł/m³
+    var perM3 = reco/m3;
+    var mLo=LAS_ZL_M3.min*mKl, mHi=(LAS_ZL_M3.max+ (zrywka?LAS_ZRYWKA_M3:0))*mKl;
+    var scaleHi=Math.max(mHi, perM3)*1.05;
+    $("mRange").style.left=(mLo/scaleHi*100)+"%";
+    $("mRange").style.width=((mHi-mLo)/scaleHi*100)+"%";
+    var mine=$("mMine");
+    mine.style.left=Math.min(99,(perM3/scaleHi*100))+"%";
+    mine.setAttribute("data-l", fmt(perM3)+" zł/m³");
+    $("mLo").textContent=fmt(mLo)+" zł/m³";
+    $("mHi").textContent=fmt(mHi)+" zł/m³";
+
+    var v=$("verdict");
+    if(perM3 < 35){ v.className="verdict high"; v.textContent="⚠ Za tanio. Nawet wykonawcy leśni mówią, że 35 zł/m³ nie pokrywa kosztów."; }
+    else if(perM3 < LAS_ZL_M3.min){ v.className="verdict low"; v.textContent="⬇ Stawka jak u Taty (30–40 zł/m³) — da się wziąć więcej."; }
+    else { v.className="verdict in"; v.textContent="✓ Zdrowa stawka leśna — powyżej dolnej granicy rynku."; }
+
+    /* 5. Opłacalność — realny czas leśny (Tata: 4 drzewa w 50 minut) */
+    var hAuto = LAS_H_STALY + LAS_H_DRZEWO*n + (zrywka ? LAS_H_ZRYWKA*m3 : 0);
+    hAuto = Math.max(0.5, Math.round(hAuto*2)/2);
+    if(!czasReczny) $("godziny").value = hAuto;
+    var h = Math.max(0.5, parseFloat($("godziny").value) || hAuto);
+
+    var koszty = KOSZT_DOJAZD + KOSZT_H*h + (zrywka ? KOSZT_WYWOZ : 0);
+    var zostaje = reco - koszty;
+    var naGodzine = zostaje/h;
+
+    $("pCzas").textContent = h.toFixed(1).replace(".",",")+" h"+(czasReczny?" (Twoje)":" (szacunek)");
+    $("pKoszty").textContent = "−"+fmt(koszty)+" zł";
+    $("pZostaje").textContent = fmt(zostaje)+" zł";
+    $("pStawka").textContent = fmt(naGodzine)+" zł/h";
+
+    var pw=$("pWerdykt");
+    if(naGodzine < 60){ pw.className="verdict high"; pw.textContent="⚠ Za tanio — mniej niż 60 zł/h. Rynek za pilarza to 80–150 zł/h."; }
+    else if(naGodzine < 80){ pw.className="verdict low"; pw.textContent="⬇ Poniżej stawki pilarza (80–150 zł/h)."; }
+    else if(naGodzine <= 150){ pw.className="verdict in"; pw.textContent="✓ Uczciwie — w rynkowych 80–150 zł/h za pracę pilarza."; }
+    else { pw.className="verdict in";
+      pw.textContent="✓✓ Bardzo dobra stawka ("+fmt(naGodzine)+" zł/h przy rynkowych 80–150). Tak działa praca na akord: im szybciej, tym więcej na godzinę."; }
+    $("pOdniesienie").textContent =
+      "W lesie liczy się tempo: przy stawce za m³ zarabiasz tym więcej, im szybciej pracujesz. "+
+      "Kwota „zostaje\" jest przed podatkiem.";
+
+    /* 6. NAJWAŻNIEJSZE: wartość samego drewna */
+    var wartoscOpal = m3 * DREWNO_SUROWE_M3;
+    var di=$("drewnoInfo");
+    di.hidden=false;
+    di.innerHTML = "🪵 <b>Uwaga na wartość drewna.</b> Te "+m3.toFixed(1).replace(".",",")+" m³ to surowiec wart "+
+      "orientacyjnie <b>~"+fmt(wartoscOpal)+" zł</b> przy drodze (opał w detalu: iglaste 160–185 zł/m³, "+
+      "buk i dąb 250–280 zł/m³ — ale to po pocięciu, wysezonowaniu i dowiezieniu). "+
+      "Za samą wycinkę dostajesz "+fmt(reco)+" zł. <b>Jeśli możesz zabrać drewno, jest ono często warte więcej niż cała usługa</b> — "+
+      "warto negocjować: taniej za robotę, ale drewno dla Ciebie.";
+
+    // Podpowiedzi
+    $("scopeHint").textContent = "W trybie leśnym zakres prac nie ma znaczenia — liczy się objętość i czy robisz zrywkę.";
+    $("klientHint").textContent = KLIENT_OPIS[typKl] || "";
+    $("lasHint").textContent = "Stawka Taty to 30–40 zł/m³ za samo obalenie. Celujemy w "+
+      LAS_ZL_M3.min+"–"+LAS_ZL_M3.max+" zł/m³, bo na forum leśnym 35 zł/m³ uznano za niewystarczające na pokrycie kosztów.";
   }
 
   function labelMetoda(m){return m==="ziemia"?"z ziemi":m==="linowa"?"linowa":"zwyżka";}
