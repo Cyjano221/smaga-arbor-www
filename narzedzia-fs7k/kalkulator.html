@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Kalkulator wyceny — Smaga Arbor (narzędzie wewnętrzne)</title>
+
+<!-- NIE indeksuj tej strony: nie trafi do Google ani innych wyszukiwarek -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+<meta name="googlebot" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+
+<!-- Tryb aplikacji po dodaniu do ekranu głównego telefonu -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Wycena" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#16351f" />
+<style>
+  :root{
+    --green-900:#16351f;--green-700:#245c33;--green-600:#2f7a42;--green-500:#3d9457;
+    --green-50:#eef6f0;--ink:#16201a;--body:#43524a;--muted:#7a8880;--line:#e4e9e5;
+    --bg-alt:#f6f9f6;--radius:14px;--shadow:0 10px 30px rgba(22,53,31,.10);
+    --amber:#c98a12;--red:#c0392b;
+    --font:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);color:var(--body);background:var(--bg-alt);line-height:1.55;padding:20px 14px 60px}
+  .wrap{max-width:920px;margin:0 auto}
+  header{text-align:center;margin-bottom:22px}
+  .brand{display:inline-flex;align-items:center;gap:9px;font-weight:800;color:var(--ink);font-size:1.25rem}
+  .brand span.mark{display:grid;place-items:center;width:32px;height:32px;background:var(--green-600);color:#fff;border-radius:9px;font-size:1rem}
+  h1{font-size:1.05rem;color:var(--green-700);margin-top:10px;font-weight:700}
+  .sub{color:var(--muted);font-size:.86rem;margin-top:4px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+  .card h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--green-600);margin-bottom:16px;font-weight:700}
+  label{display:block;font-size:.82rem;font-weight:600;color:var(--ink);margin:14px 0 6px}
+  label:first-of-type{margin-top:0}
+  select,input[type=number]{width:100%;font-family:inherit;font-size:.95rem;color:var(--ink);
+    padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fcfdfc}
+  select:focus,input:focus{outline:none;border-color:var(--green-500);box-shadow:0 0 0 3px rgba(61,148,87,.14)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .toggles{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+  .chk{display:flex;align-items:center;gap:7px;font-size:.85rem;font-weight:600;color:var(--ink);
+    background:var(--green-50);padding:8px 12px;border-radius:999px;cursor:pointer;user-select:none;border:1.5px solid transparent}
+  .chk input{width:16px;height:16px;accent-color:var(--green-600)}
+  .chk.on{border-color:var(--green-500);background:#e2efe6}
+  .nlp{background:var(--green-50);border:1px solid #d7e7dc;border-radius:11px;padding:14px;margin-bottom:6px}
+  .nlp label{margin-top:0}
+  .nlp textarea{width:100%;font-family:inherit;font-size:.92rem;padding:10px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fff;resize:vertical;color:var(--ink)}
+  .nlp button{margin-top:10px;width:100%;background:var(--green-600);color:#fff;border:0;padding:10px;border-radius:999px;font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer}
+  .nlp button:hover{background:var(--green-700)}
+  .nlp__msg{font-size:.82rem;color:var(--green-700);margin-top:8px;font-weight:600;min-height:1em}
+
+  /* Zakres prac */
+  .scope{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+  .mods{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .mods .chk{font-size:.8rem;padding:7px 11px;gap:6px}
+  .mods .chk b{color:var(--green-700);font-weight:800}
+  .chk--minus{background:#fdf3e0}
+  .chk--minus b{color:var(--amber)}
+  .chk--minus.on{border-color:var(--amber);background:#fbead0}
+  .scope__hint{font-size:.8rem;color:var(--muted);margin-top:10px;line-height:1.45;min-height:1em}
+
+  /* Wynik */
+  .price{font-size:2.3rem;font-weight:800;color:var(--green-700);line-height:1.1}
+  .price small{font-size:1rem;color:var(--muted);font-weight:600}
+  .reco{margin-top:6px;font-size:.9rem;color:var(--body)}
+  .reco b{color:var(--ink)}
+  .break{margin-top:18px;border-top:1px solid var(--line);padding-top:14px}
+  .break .li{display:flex;justify-content:space-between;font-size:.86rem;padding:4px 0}
+  .break .li span:last-child{font-weight:600;color:var(--ink)}
+  .break .li.muted span{color:var(--muted);font-weight:500}
+
+  .market{margin-top:18px;background:var(--bg-alt);border:1px solid var(--line);border-radius:11px;padding:14px}
+  .market h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+  .bar{position:relative;height:34px;background:#e9efe9;border-radius:8px;overflow:hidden}
+  .bar .range{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,var(--green-500),var(--green-600));opacity:.85}
+  .bar .mine{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink);border-radius:2px}
+  .bar .mine::after{content:attr(data-l);position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+    font-size:.68rem;font-weight:700;color:var(--ink);white-space:nowrap}
+  .barlabels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:6px}
+  .verdict{margin-top:12px;font-size:.9rem;font-weight:600;padding:9px 12px;border-radius:8px}
+  .verdict.low{background:#fdf3e0;color:var(--amber)}
+  .verdict.in{background:var(--green-50);color:var(--green-700)}
+  .verdict.high{background:#fbe9e7;color:var(--red)}
+
+  .note{font-size:.78rem;color:var(--muted);margin-top:18px;text-align:center;line-height:1.5}
+  .copybtn{margin-top:16px;width:100%;background:var(--green-600);color:#fff;border:0;padding:12px;border-radius:999px;
+    font-family:inherit;font-size:.92rem;font-weight:700;cursor:pointer}
+  .copybtn:hover{background:var(--green-700)}
+  .copied{color:var(--green-700);font-size:.82rem;text-align:center;margin-top:8px;min-height:1em;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="mark">🌲</span> Smaga Arbor</div>
+    <h1>Kalkulator wyceny</h1>
+    <div class="sub">Narzędzie wewnętrzne — nie publikować. Wersja 1.0 (stawki do kalibracji).</div>
+  </header>
+
+  <div class="grid">
+    <!-- WEJŚCIE -->
+    <div class="card">
+      <h2>Parametry zlecenia</h2>
+
+      <div class="nlp">
+        <label for="opis">💬 Opisz zlecenie słowami (opcjonalnie)</label>
+        <textarea id="opis" rows="3" placeholder="np. Dwa dęby, obwód ok. 200 cm, wysokie na 15 m, blisko dachu, dużo gałęzi do wywozu, trudny dojazd"></textarea>
+        <button type="button" id="parseBtn">✨ Wypełnij pola z opisu</button>
+        <div class="nlp__msg" id="nlpMsg"></div>
+      </div>
+
+      <label>Metoda wycinki</label>
+      <select id="metoda">
+        <option value="ziemia">Obalenie z ziemi (najtaniej)</option>
+        <option value="linowa" selected>Sekcyjna — techniki linowe</option>
+        <option value="zwyzka">Z podnośnika (zwyżka) — od 2027</option>
+      </select>
+
+      <div class="row">
+        <div>
+          <label>Wysokość drzewa</label>
+          <select id="wysokosc">
+            <option value="mala">do 5 m (małe)</option>
+            <option value="srednia" selected>6–12 m (średnie)</option>
+            <option value="duza">13–20 m (duże)</option>
+            <option value="bardzo">powyżej 20 m</option>
+          </select>
+        </div>
+        <div>
+          <label>Liczba drzew</label>
+          <input type="number" id="liczba" value="1" min="1" step="1" />
+        </div>
+      </div>
+
+      <label>Bliskość budynku</label>
+      <select id="budynek">
+        <option value="0">Brak / otwarta przestrzeń</option>
+        <option value="1">Średnia — w pobliżu zabudowy</option>
+        <option value="2">Duża — bezpośrednio nad dachem</option>
+      </select>
+
+      <label>Dojazd / dostęp</label>
+      <select id="dojazd">
+        <option value="0">Łatwy — auto podjedzie</option>
+        <option value="1">Utrudniony — wąsko / ogród</option>
+        <option value="2">Trudny — brak dojazdu / stromo</option>
+      </select>
+
+      <label>Obwód pnia (cm) — mierz na wys. 130 cm ⭐ kluczowe</label>
+      <input type="number" id="obwod" value="120" min="0" step="5" />
+
+      <div class="toggles">
+        <label class="chk" id="wrap-linia"><input type="checkbox" id="linia" /> Blisko linii energetycznej (+30%)</label>
+      </div>
+
+      <div class="scope">
+        <label for="wariant">📦 Zakres prac — co klient chce?</label>
+        <select id="wariant">
+          <option value="A">A · Samo obalenie — reszta po stronie klienta</option>
+          <option value="B">B · Obalenie + pocięcie drewna (zostaje na miejscu)</option>
+          <option value="C" selected>C · Obalenie + pocięcie + wywóz gałęzi (drewno dla klienta)</option>
+          <option value="D">D · Pod klucz — wszystko wywiezione, teren uprzątnięty</option>
+          <option value="E">E · Pod klucz + frezowanie pnia (bez śladu)</option>
+          <option value="X">✎ Własny zestaw (zaznacz ręcznie niżej)</option>
+        </select>
+
+        <div class="mods">
+          <label class="chk" id="wrap-pociecie"><input type="checkbox" id="pociecie" /> Pocięcie drewna <b>+25%</b></label>
+          <label class="chk" id="wrap-galezie"><input type="checkbox" id="galezie" /> Wywóz gałęzi <b>+20%</b></label>
+          <label class="chk" id="wrap-drewno"><input type="checkbox" id="drewno" /> Wywóz drewna <b>+15%</b></label>
+          <label class="chk" id="wrap-uprzat"><input type="checkbox" id="uprzat" /> Uprzątnięcie terenu <b>+10%</b></label>
+          <label class="chk" id="wrap-frez"><input type="checkbox" id="frez" /> Frezowanie pnia <b>3 zł/cm</b></label>
+          <label class="chk chk--minus" id="wrap-opal"><input type="checkbox" id="opal" /> Drewno zabieramy na opał <b>−10%</b></label>
+        </div>
+        <div class="scope__hint" id="scopeHint"></div>
+      </div>
+    </div>
+
+    <!-- WYNIK -->
+    <div class="card">
+      <h2>Wycena</h2>
+      <div class="price" id="priceRange">— zł</div>
+      <div class="reco" id="reco"></div>
+
+      <div class="break" id="break"></div>
+
+      <div class="market">
+        <h3>Porównanie z rynkiem — za 1 drzewo (2026)</h3>
+        <div class="bar" id="bar">
+          <div class="range" id="mRange"></div>
+          <div class="mine" id="mMine" data-l=""></div>
+        </div>
+        <div class="barlabels"><span id="mLo">0</span><span id="mHi">0</span></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+
+      <button class="copybtn" id="copy">📋 Skopiuj ofertę dla klienta</button>
+      <div class="copied" id="copied"></div>
+    </div>
+  </div>
+
+  <div class="note">
+    Model wg standardu rynkowego 2026: wycena od obwodu pnia. Alpinistyczna/sekcyjna ~1 410–2 090 zł za typowe drzewo
+    (obwód do ~315 cm), w trudnych warunkach do ~4 800 zł; średnia krajowa ~1 800 zł/szt.; frezowanie ~2,5–3 zł/cm;
+    wywóz 250–1 200 zł. Cena bazowa = <b>samo obalenie</b>; każdy moduł zakresu dolicza procent od tej kwoty.
+    Stawki (zł/cm oraz % modułów) możesz podkręcić pod swoją realną pracę — powiedz, to zmienię.
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Model wg standardu rynkowego 2026: wycena od CENTYMETRA OBWODU pnia (mierzony na 130 cm).
+  // Dane: alpinistyczna standard ~5,5-7 zł/cm, w trudnych warunkach do ~10-13 zł/cm.
+  var RATE  = { ziemia:3.0, linowa:6.0, zwyzka:6.5 };          // zł/cm — stawka bazowa (standard)
+  var HMOD  = { mala:0.9, srednia:1.0, duza:1.1, bardzo:1.25 }; // korekta za wysokość
+  var FLOOR = { ziemia:300, linowa:500, zwyzka:600 };          // cena minimalna za drzewo
+  // Widełki konkurencji w zł/cm obwodu (rozpiętość: łatwe -> trudne)
+  var MKT   = { ziemia:[2.5,5.0], linowa:[5.5,11.0], zwyzka:[6.0,11.0] };
+
+  // Moduły zakresu prac — dopłaty liczone od ceny bazowej (obalenia)
+  var MOD = { pociecie:0.25, galezie:0.20, drewno:0.15, uprzat:0.10, opal:-0.10 };
+  var MODY = ["pociecie","galezie","drewno","uprzat","frez","opal"];
+  // Gotowe warianty: który moduł jest włączony
+  var WARIANT = {
+    A:{},                                                               // samo obalenie
+    B:{pociecie:1},                                                     // + pocięcie
+    C:{pociecie:1, galezie:1},                                          // + wywóz gałęzi
+    D:{pociecie:1, galezie:1, drewno:1, uprzat:1},                      // pod klucz
+    E:{pociecie:1, galezie:1, drewno:1, uprzat:1, frez:1}               // + frezowanie
+  };
+  var OPIS = {
+    A:"Ścinamy drzewo i zostawiamy jak leży. Pocięcie i uprzątnięcie po stronie klienta — najtańsza opcja.",
+    B:"Drzewo ścięte i pocięte na kawałki, zostaje na miejscu. Klient sam zabiera drewno i gałęzie.",
+    C:"Najczęściej wybierane. Gałęzie zabieramy, drewno zostaje klientowi na opał.",
+    D:"Wszystko wywiezione, teren uprzątnięty. Zostaje tylko pniak przy ziemi.",
+    E:"Kompletnie bez śladu — pniak sfrezowany poniżej poziomu gruntu.",
+    X:"Własny zestaw — zaznacz dokładnie to, czego chce klient."
+  };
+
+  var $ = function(id){return document.getElementById(id);};
+  var ids = ["metoda","wysokosc","liczba","budynek","dojazd","obwod","linia"].concat(MODY);
+  ids.forEach(function(id){
+    var el=$(id);
+    el.addEventListener("input",calc);
+    el.addEventListener("change",calc);
+  });
+  ["linia"].concat(MODY).forEach(function(id){
+    var el=$(id), wrap=$("wrap-"+id);
+    function sync(){wrap.classList.toggle("on",el.checked);}
+    el.addEventListener("change",sync); sync();
+  });
+
+  // Wybór wariantu ustawia moduły
+  $("wariant").addEventListener("change", function(){
+    var w=$("wariant").value;
+    if(w!=="X"){
+      var set=WARIANT[w]||{};
+      MODY.forEach(function(id){
+        var el=$(id);
+        el.checked = !!set[id];
+        $("wrap-"+id).classList.toggle("on", el.checked);
+      });
+    }
+    calc();
+  });
+  // Ręczna zmiana modułu przełącza na "własny zestaw", jeśli nie pasuje do wariantu
+  MODY.forEach(function(id){
+    $(id).addEventListener("change", function(){
+      var w=$("wariant").value;
+      if(w==="X") return;
+      var set=WARIANT[w]||{};
+      var zgodne = MODY.every(function(m){ return $(m).checked === !!set[m]; });
+      if(!zgodne) $("wariant").value="X";
+    });
+  });
+
+  function fmt(n){ return Math.round(n).toLocaleString("pl-PL"); }
+  function round50(n){ return Math.round(n/50)*50; }
+
+  var last = {};
+
+  function calc(){
+    var metoda=$("metoda").value, wys=$("wysokosc").value;
+    var n=Math.max(1, parseInt($("liczba").value||"1",10));
+    var bud=parseInt($("budynek").value,10);
+    var doj=parseInt($("dojazd").value,10);
+    var obwod=Math.max(0, parseFloat($("obwod").value||"0"));
+    var linia=$("linia").checked;
+    var on={}; MODY.forEach(function(m){ on[m]=$(m).checked; });
+
+    // Mnożniki ryzyka
+    var mBud = bud===2?1.30 : bud===1?1.15 : 1.0;
+    var mDoj = doj===2?1.25 : doj===1?1.15 : 1.0;
+    var mLin = linia?1.30:1.0;
+    var factor = mBud*mDoj*mLin;
+
+    // Rabat ilościowy (za drzewo)
+    var vol = n>=4?0.90 : n>=2?0.95 : 1.0;
+
+    // Cena bazowa za 1 drzewo = stawka zł/cm × obwód × korekta wysokości (min. cena floor)
+    var core=Math.max(FLOOR[metoda], RATE[metoda]*obwod*HMOD[wys]);
+    var per=core*factor;                 // za 1 drzewo z ryzykiem (punktowo)
+    var perLo=per*0.90, perHi=per*1.15;
+    var subLo=perLo*n*vol, subHi=perHi*n*vol;
+
+    // Moduły zakresu — procent liczony od ceny za obalenie
+    var pct=0;
+    ["pociecie","galezie","drewno","uprzat","opal"].forEach(function(m){
+      if(on[m]) pct += MOD[m];
+    });
+    var dodLo=subLo*pct, dodHi=subHi*pct;
+
+    var frezVal = on.frez ? 3*obwod*n : 0;
+
+    var totLo = subLo+dodLo+frezVal;
+    var totHi = subHi+dodHi+frezVal;
+    var reco = round50((totLo+totHi)/2);
+
+    // Wyświetlenie
+    $("priceRange").innerHTML = fmt(totLo)+" – "+fmt(totHi)+" <small>zł</small>";
+    $("reco").innerHTML = "Rekomendowana cena: <b>"+fmt(reco)+" zł</b>";
+
+    var effRate = obwod>0 ? (per/obwod) : 0;
+    var rows=[];
+    rows.push(["Stawka bazowa ("+labelMetoda(metoda)+")", fmt(RATE[metoda])+" zł/cm × "+fmt(obwod)+" cm"]);
+    if(HMOD[wys]!==1) rows.push(["Korekta za wysokość ("+labelWys(wys)+")", "×"+HMOD[wys].toFixed(2)]);
+    if(factor>1.001) rows.push(["Narzuty za ryzyko/dostęp", "×"+factor.toFixed(2)]);
+    rows.push(["Obalenie — cena za 1 drzewo", fmt(round50(per))+" zł ("+effRate.toFixed(1)+" zł/cm)"]);
+    if(n>1) rows.push(["Liczba drzew × "+n+(vol<1?" (rabat "+Math.round((1-vol)*100)+"%)":""), ""]);
+    var NAZWA={pociecie:"Pocięcie drewna",galezie:"Wywóz gałęzi",drewno:"Wywóz drewna",uprzat:"Uprzątnięcie terenu",opal:"Drewno na opał dla nas"};
+    ["pociecie","galezie","drewno","uprzat","opal"].forEach(function(m){
+      if(on[m]) rows.push([NAZWA[m], (MOD[m]>0?"+":"−")+Math.round(Math.abs(MOD[m])*100)+"%"]);
+    });
+    if(on.frez) rows.push(["Frezowanie ("+fmt(obwod)+" cm × 3 zł × "+n+")", "+"+fmt(frezVal)+" zł"]);
+    var html="";
+    rows.forEach(function(r){
+      html+='<div class="li'+(r[1]===""?" muted":"")+'"><span>'+r[0]+'</span><span>'+r[1]+'</span></div>';
+    });
+    $("break").innerHTML=html;
+
+    // Rynek — widełki konkurencji za 1 drzewo = obwód × korekta wys × [stawka min, max] (zł/cm)
+    var hmod=HMOD[wys];
+    var mLo=Math.max(FLOOR[metoda]*0.9, MKT[metoda][0]*obwod*hmod);
+    var mHi=Math.max(FLOOR[metoda],     MKT[metoda][1]*obwod*hmod);
+    var scaleHi = Math.max(mHi, perHi)*1.05;
+    $("mRange").style.left = (mLo/scaleHi*100)+"%";
+    $("mRange").style.width = ((mHi-mLo)/scaleHi*100)+"%";
+    var mineEl=$("mMine");
+    mineEl.style.left = Math.min(99,(per/scaleHi*100))+"%";
+    mineEl.setAttribute("data-l","1 drzewo: "+fmt(round50(per)));
+    $("mLo").textContent = fmt(mLo)+" zł";
+    $("mHi").textContent = fmt(mHi)+" zł";
+
+    var v=$("verdict");
+    if(per < mLo){ v.className="verdict low"; v.textContent="⬇ Poniżej rynku — spokojnie możesz podnieść cenę."; }
+    else if(per > mHi){ v.className="verdict high"; v.textContent="⬆ Powyżej rynku — uzasadnij trudnością (linia, dach, brak dojazdu)."; }
+    else { v.className="verdict in"; v.textContent="✓ W widełkach rynkowych — cena konkurencyjna."; }
+
+    // Podpowiedź do wariantu
+    $("scopeHint").textContent = OPIS[$("wariant").value] || "";
+
+    last={metoda:metoda,wys:wys,n:n,totLo:totLo,totHi:totHi,reco:reco,on:on,wariant:$("wariant").value};
+  }
+
+  function labelMetoda(m){return m==="ziemia"?"z ziemi":m==="linowa"?"linowa":"zwyżka";}
+  function labelWys(w){return w==="mala"?"do 5 m":w==="srednia"?"6–12 m":w==="duza"?"13–20 m":">20 m";}
+
+  $("copy").addEventListener("click",function(){
+    var zakres=["Ścięcie drzewa"];
+    if(last.on.pociecie) zakres.push("pocięcie drewna");
+    if(last.on.galezie)  zakres.push("wywóz gałęzi");
+    if(last.on.drewno)   zakres.push("wywóz drewna");
+    if(last.on.uprzat)   zakres.push("uprzątnięcie terenu");
+    if(last.on.frez)     zakres.push("frezowanie pnia");
+    var t="Wycena — Smaga Arbor\n"+
+      "Zakres prac: "+zakres.join(", ")+
+      (last.on.opal?"\n(drewno zabieramy na opał — cena już z uwzględnionym upustem)":"")+
+      (!last.on.galezie && !last.on.drewno && !last.on.uprzat
+        ? "\nUprzątnięcie i wywóz po stronie klienta." : "")+
+      "\nLiczba drzew: "+last.n+
+      "\n\nCena: "+fmt(last.reco)+" zł (widełki "+fmt(last.totLo)+"–"+fmt(last.totHi)+" zł)"+
+      "\nCena orientacyjna, ostateczna po bezpłatnych oględzinach.";
+    navigator.clipboard.writeText(t).then(function(){
+      $("copied").textContent="Skopiowano — wklej klientowi.";
+      setTimeout(function(){$("copied").textContent="";},2500);
+    },function(){ $("copied").textContent="Nie udało się skopiować."; });
+  });
+
+  // ===== Rozpoznawanie opisu słowami =====
+  function deacc(s){return s.toLowerCase()
+    .replace(/ą/g,'a').replace(/ć/g,'c').replace(/ę/g,'e').replace(/ł/g,'l')
+    .replace(/ń/g,'n').replace(/ó/g,'o').replace(/ś/g,'s').replace(/ż/g,'z').replace(/ź/g,'z');}
+  function setVal(id,val){var e=$(id); if(e.type==='checkbox')e.checked=val; else e.value=val; e.dispatchEvent(new Event('change'));}
+
+  var parseBtn=$("parseBtn");
+  if(parseBtn) parseBtn.addEventListener("click",function(){
+    var raw=$("opis").value;
+    if(!raw.trim()){ $("nlpMsg").textContent="Wpisz opis w polu powyżej."; return; }
+    var t=deacc(raw), found=[];
+
+    // Reset kontekstu — czego opis nie wspomni, tego nie ma
+    setVal("budynek","0"); setVal("dojazd","0"); setVal("linia",false);
+    MODY.forEach(function(m){ setVal(m,false); });
+    $("wariant").value="X";
+
+    // Metoda — UWAGA: "obalenie" opisuje zakres prac, nie metodę, więc go tu nie łapiemy
+    var metodaJawna = true;
+    if(/zwyzk|podnosnik|kosz/.test(t)){ setVal("metoda","zwyzka"); found.push("zwyżka"); }
+    else if(/linow|alpinist|sekcyjn|na linach/.test(t)){ setVal("metoda","linowa"); found.push("linowa"); }
+    else if(/z ziemi|z gruntu|w polu|otwart/.test(t)){ setVal("metoda","ziemia"); found.push("z ziemi"); }
+    else { metodaJawna = false; setVal("metoda","ziemia"); }
+
+    var words={jeden:1,jedno:1,jedna:1,dwa:2,dwie:2,trzy:3,cztery:4,piec:5,szesc:6};
+    var cnt=null;
+    var mNum=t.match(/(\d+)\s*(drzew|drzewa|drzewo|szt|deb|deby|swierk|sosn|brzoz|buk|klon|lip|topol|jodl)/);
+    if(mNum) cnt=parseInt(mNum[1],10);
+    if(cnt===null){ for(var w in words){ if(new RegExp("\\b"+w+"\\b").test(t)){ cnt=words[w]; break; } } }
+    if(cnt){ setVal("liczba",cnt); found.push(cnt+" drzew"); }
+
+    var mObw=t.match(/obw\w*\D{0,8}(\d{2,3})/) || t.match(/(\d{2,3})\s*cm/);
+    if(mObw){ setVal("obwod",parseInt(mObw[1],10)); found.push("obwód "+mObw[1]+" cm"); }
+
+    var mH=t.match(/(\d{1,2})\s*m(?![m2c])/);
+    if(mH){ var h=parseInt(mH[1],10); var band=h<=5?"mala":h<=12?"srednia":h<=20?"duza":"bardzo"; setVal("wysokosc",band); found.push(h+" m"); }
+    else if(/wysokie|wysoki/.test(t)){ setVal("wysokosc","duza"); found.push("wysokie"); }
+    else if(/niskie|male drzewo|niski/.test(t)){ setVal("wysokosc","mala"); found.push("niskie"); }
+
+    if(/nad dachem|blisko dachu|przy dachu|nad dach/.test(t)){ setVal("budynek","2"); found.push("blisko dachu"); }
+    else if(/blisko dom|przy dom|blisko budynk|przy budynk|zabudow|ogrodzeni/.test(t)){ setVal("budynek","1"); found.push("przy zabudowie"); }
+
+    if(/lini|kabl|prad|energetyczn|napiec/.test(t)){ setVal("linia",true); found.push("linia energ."); }
+
+    // Jeśli metody nie podano wprost, a drzewo stoi przy zabudowie/linii — zakładamy techniki linowe
+    if(!metodaJawna && ($("budynek").value!=="0" || $("linia").checked)){
+      setVal("metoda","linowa"); found.push("linowa (bo przy zabudowie)");
+    }
+
+    if(/brak dojazd|nie podjedzie|stromo|strom|trudny dojazd|trudny teren/.test(t)){ setVal("dojazd","2"); found.push("trudny dojazd"); }
+    else if(/wask|utrudnion|ogrod|ciasn/.test(t)){ setVal("dojazd","1"); found.push("utrudniony dojazd"); }
+    else if(/latwy dojazd|podjedzie|z drogi/.test(t)){ setVal("dojazd","0"); }
+
+    // ── Zakres prac ──
+    var samoObalenie = /samo obalenie|tylko scia|tylko obal|tylko zwal|reszte sam|sam sobie|sam posprzat|nic wiecej/.test(t);
+    var podKlucz     = /pod klucz|wszystko|kompleksowo|calosc|zeby nic nie zostalo|bez sladu/.test(t);
+
+    if(podKlucz){
+      ["pociecie","galezie","drewno","uprzat"].forEach(function(m){ setVal(m,true); });
+      found.push("pod klucz");
+    } else if(!samoObalenie){
+      if(/pocie|poci[ae]c|na kawalk|na klock|na szczapy|opalowe|porzn/.test(t)){ setVal("pociecie",true); found.push("pocięcie"); }
+      if(/galez|konar|gaі|chrust|zrebk/.test(t)){ setVal("galezie",true); found.push("wywóz gałęzi"); }
+      if(/wywoz drewn|zabrac drewno|wywiezc drewno|drewno zabra/.test(t)){ setVal("drewno",true); found.push("wywóz drewna"); }
+      if(/uprzatn|sprzatn|posprzat|uporzadk|zagrabi/.test(t)){ setVal("uprzat",true); found.push("uprzątnięcie"); }
+      if(/wywoz|zabrac|urobk|biomas/.test(t) && !$("galezie").checked && !$("drewno").checked){
+        setVal("galezie",true); found.push("wywóz gałęzi");
+      }
+    } else { found.push("samo obalenie"); }
+
+    if(/drewno dla was|zabierzcie drewno|drewno dla ciebie|na opal dla was|mozecie wziac drewno/.test(t)){
+      setVal("opal",true); found.push("drewno na opał dla nas (−10%)");
+    }
+    if(/frez|karp|szlifowanie pnia/.test(t)){ setVal("frez",true); found.push("frezowanie"); }
+
+    // Dopasuj wariant, jeśli zestaw odpowiada gotowemu
+    (function(){
+      for(var w in WARIANT){
+        var set=WARIANT[w];
+        if(MODY.every(function(m){ return $(m).checked === !!set[m]; })){ $("wariant").value=w; return; }
+      }
+    })();
+
+    calc();
+    $("nlpMsg").textContent = found.length
+      ? ("Rozpoznano: "+found.join(", ")+". Sprawdź i popraw pola poniżej.")
+      : "Nie rozpoznałem parametrów — uzupełnij ręcznie poniżej.";
+  });
+
+  // Start: zastosuj domyślny wariant (C) do checkboxów i policz
+  $("wariant").dispatchEvent(new Event("change"));
+})();
+</script>
+</body>
+</html>
